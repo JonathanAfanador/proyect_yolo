@@ -2,7 +2,13 @@ import axios from 'axios';
 import { supabase } from './supabase';
 import type { DetectionResult, RecognitionResult, RegisteredFace } from '../types';
 
-const api = axios.create({ baseURL: process.env.EXPO_PUBLIC_API_URL });
+const api = axios.create({
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  timeout: 60000, // 60 segundos de timeout
+  headers: {
+    'Bypass-Tunnel-Reminder': 'true',
+  }
+});
 
 // Adjunta JWT en cada request
 api.interceptors.request.use(async (config) => {
@@ -11,6 +17,25 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${session.access_token}`;
   }
   return config;
+});
+
+// 🔍 Debug Logs Interceptor: Registra peticiones en la consola de Metro
+api.interceptors.request.use((config) => {
+  console.log(`📡 [API REQ] ${config.method?.toUpperCase()} ${config.url}`);
+  return config;
+}, (error) => {
+  console.log(`❌ [API REQ ERROR]`, error);
+  return Promise.reject(error);
+});
+
+api.interceptors.response.use((response) => {
+  console.log(`✅ [API RES] ${response.config.method?.toUpperCase()} ${response.config.url} - Status ${response.status}`);
+  return response;
+}, (error) => {
+  const status = error?.response?.status;
+  const detail = error?.response?.data?.detail || error?.message;
+  console.log(`❌ [API ERR] ${error.config?.method?.toUpperCase()} ${error.config?.url} - Status ${status || 'No Response'} - Detalle:`, detail);
+  return Promise.reject(error);
 });
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -60,5 +85,5 @@ export const facesApi = {
   },
   listRegistered: () => api.get<RegisteredFace[]>('/api/v1/faces/registered'),
   deleteFace: (id: string) => api.delete(`/api/v1/faces/registered/${id}`),
-  getHistory: (limit = 20) => api.get('/api/v1/faces/history', { params: { limit } }),
+  getHistory: (limit = 20, offset = 0) => api.get('/api/v1/faces/history', { params: { limit, offset } }),
 };

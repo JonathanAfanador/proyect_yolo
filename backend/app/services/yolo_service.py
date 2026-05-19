@@ -10,6 +10,89 @@ from ultralytics import YOLO
 from app.core.config import settings
 from app.models.schemas import Detection, BoundingBox
 
+COCO_CLASSES_ES = {
+    "person": "persona",
+    "bicycle": "bicicleta",
+    "car": "carro",
+    "motorcycle": "motocicleta",
+    "airplane": "avión",
+    "bus": "autobús",
+    "train": "tren",
+    "truck": "camión",
+    "boat": "barco",
+    "traffic light": "semáforo",
+    "fire hydrant": "hidrante de incendios",
+    "stop sign": "señal de pare",
+    "parking meter": "parquímetro",
+    "bench": "banca",
+    "bird": "pájaro",
+    "cat": "gato",
+    "dog": "perro",
+    "horse": "caballo",
+    "sheep": "oveja",
+    "cow": "vaca",
+    "elephant": "elefante",
+    "bear": "oso",
+    "zebra": "cebra",
+    "giraffe": "jirafa",
+    "backpack": "mochila",
+    "umbrella": "paraguas",
+    "handbag": "bolso de mano",
+    "tie": "corbata",
+    "suitcase": "maleta",
+    "frisbee": "frisbee",
+    "skis": "esquís",
+    "snowboard": "tabla de nieve",
+    "sports ball": "pelota deportiva",
+    "kite": "cometa",
+    "baseball bat": "bate de béisbol",
+    "baseball glove": "guante de béisbol",
+    "skateboard": "patineta",
+    "surfboard": "tabla de surf",
+    "tennis racket": "raqueta de tenis",
+    "bottle": "botella",
+    "wine glass": "copa de vino",
+    "cup": "taza",
+    "fork": "tenedor",
+    "knife": "cuchillo",
+    "spoon": "cuchara",
+    "bowl": "tazón",
+    "banana": "plátano",
+    "apple": "manzana",
+    "sandwich": "sándwich",
+    "orange": "naranja",
+    "broccoli": "brócoli",
+    "carrot": "zanahoria",
+    "hot dog": "perro caliente",
+    "pizza": "pizza",
+    "donut": "dona",
+    "cake": "pastel",
+    "chair": "silla",
+    "couch": "sofá",
+    "potted plant": "planta en maceta",
+    "bed": "cama",
+    "dining table": "mesa de comedor",
+    "toilet": "inodoro",
+    "tv": "televisor",
+    "laptop": "computadora portátil",
+    "mouse": "mouse",
+    "remote": "control remoto",
+    "keyboard": "teclado",
+    "cell phone": "teléfono celular",
+    "microwave": "microondas",
+    "oven": "horno",
+    "toaster": "tostadora",
+    "sink": "fregadero",
+    "refrigerator": "refrigerador",
+    "book": "libro",
+    "clock": "reloj",
+    "vase": "florero",
+    "scissors": "tijeras",
+    "teddy bear": "oso de peluche",
+    "hair drier": "secador de pelo",
+    "toothbrush": "cepillo de dientes"
+}
+
 class YOLOService:
     _instance = None
     _obj_model = None
@@ -46,7 +129,7 @@ class YOLOService:
         _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
         return buf.tobytes()
 
-    async def detect_objects(self, image_bytes, confidence=0.5, max_results=50, classes_filter=None):
+    async def detect_objects(self, image_bytes, confidence=0.25, max_results=50, classes_filter=None):
         start = time.time()
         model = self.get_object_model()
         img_bgr = self._decode(image_bytes)
@@ -55,17 +138,18 @@ class YOLOService:
         detections, annotated, names = [], img_bgr.copy(), model.names
         for r in results:
             for box in r.boxes:
-                label = names[int(box.cls)]
-                if classes_filter and label not in classes_filter:
+                label_en = names[int(box.cls)]
+                if classes_filter and label_en not in classes_filter:
                     continue
+                label_es = COCO_CLASSES_ES.get(label_en, label_en)
                 x1,y1,x2,y2 = [float(v) for v in box.xyxy[0]]
                 conf_val = float(box.conf[0])
-                detections.append(Detection(label=label, confidence=conf_val,
+                detections.append(Detection(label=label_es, confidence=conf_val,
                     class_id=int(box.cls),
                     bounding_box=BoundingBox(x1=x1,y1=y1,x2=x2,y2=y2,
                                              width=x2-x1,height=y2-y1)))
                 cv2.rectangle(annotated,(int(x1),int(y1)),(int(x2),int(y2)),(0,200,0),2)
-                cv2.putText(annotated,f"{label} {conf_val:.2f}",(int(x1),max(int(y1)-8,0)),
+                cv2.putText(annotated,f"{label_es} {conf_val:.2f}",(int(x1),max(int(y1)-8,0)),
                             cv2.FONT_HERSHEY_SIMPLEX,0.6,(0,200,0),2)
         return detections, self._encode(annotated), (time.time()-start)*1000
 

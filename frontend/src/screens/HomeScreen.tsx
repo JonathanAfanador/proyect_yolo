@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, ScrollView,
+  StatusBar, ScrollView, Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
@@ -55,19 +56,30 @@ export default function HomeScreen() {
   const { user, logout, initialize } = useAuthStore();
   useEffect(() => { initialize(); }, []);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (e) {
+      console.warn("Error al cerrar sesión", e);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#1A1A2E" />
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>CNN Unified</Text>
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text style={styles.headerTitle}>
+            Detector de <Text style={{ color: '#F59E0B' }}>objetos</Text>{'\n'}y <Text style={{ color: '#A5B4FC' }}>personas</Text>
+          </Text>
           <Text style={styles.headerSub}>
-            Hola, {user?.user_metadata?.full_name || 'Usuario'}
+            Hola, <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{user?.user_metadata?.full_name || 'Usuario'}</Text> 
           </Text>
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={22} color="#AAAAAA" />
         </TouchableOpacity>
       </View>
@@ -105,21 +117,25 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
+  safe: { flex: 1, backgroundColor: '#1A1A2E' }, // Fondo oscuro para el notch
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 18,
+    backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 10 : 16,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  headerSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  logoutBtn: { padding: 8 },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5, lineHeight: 28 },
+  headerSub: { fontSize: 13, color: '#9CA3AF', marginTop: 6, fontWeight: '500' },
+  logoutBtn: { 
+    padding: 10, backgroundColor: '#2D2D44', borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center'
+  },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, padding: 14, backgroundColor: '#1A1A2E' },
   badge: {
     backgroundColor: '#2D2D44', paddingHorizontal: 10,
     paddingVertical: 4, borderRadius: 12,
   },
   badgeText: { fontSize: 11, color: '#A5B4FC', fontWeight: '600' },
-  scroll: { padding: 16, gap: 12 },
+  scroll: { padding: 16, gap: 12, backgroundColor: '#F9FAFB', flexGrow: 1 },
   card: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
     borderRadius: 12, padding: 16, borderLeftWidth: 4,

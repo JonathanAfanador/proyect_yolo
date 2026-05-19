@@ -1,5 +1,7 @@
 from supabase import create_client, Client
 from app.core.config import settings
+# Trigger reload to refresh environment variables
+
 
 _client: Client | None = None
 

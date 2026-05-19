@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ActivityIndicator, Alert, Image, ScrollView,
+  ActivityIndicator, Image, ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useFaceRecognition } from '../hooks/useFaceRecognition';
+import { CustomAlert } from '../components/CustomAlert';
 
 export default function RecognizeScreen() {
   const router = useRouter();
@@ -15,23 +17,73 @@ export default function RecognizeScreen() {
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const cameraRef = useRef<any>(null);
   const { recognize, loading, result, error, reset } = useFaceRecognition();
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'error' as 'error' | 'warning' | 'success',
+    title: '',
+    message: '',
+  });
+
+  const compressImage = async (uri: string): Promise<string> => {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (e) {
+      console.warn("Error comprimiendo imagen:", e);
+      return uri;
+    }
+  };
 
   const takePicture = async () => {
-    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.9 });
-    if (photo) { setCapturedUri(photo.uri); reset(); }
+    if (!cameraRef.current) return;
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+      if (photo) {
+        const compressedUri = await compressImage(photo.uri);
+        setCapturedUri(compressedUri);
+        reset();
+      }
+    } catch (error) {
+      console.warn("Error capturando imagen:", error);
+      setAlertConfig({
+        visible: true,
+        type: 'error',
+        title: 'Error de cámara',
+        message: 'No se pudo usar la cámara. Intenta de nuevo o sube una foto de tu galería.',
+      });
+    }
   };
 
   const pickImage = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9,
-    });
-    if (!res.canceled) { setCapturedUri(res.assets[0].uri); reset(); }
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const compressedUri = await compressImage(res.assets[0].uri);
+        setCapturedUri(compressedUri);
+        reset();
+      }
+    } catch (error) {
+      console.warn("Error seleccionando imagen:", error);
+    }
   };
 
   const analyze = async () => {
     if (!capturedUri) return;
     try { await recognize(capturedUri); }
-    catch { Alert.alert('Error', error || 'No se pudo procesar'); }
+    catch (err: any) {
+      setAlertConfig({
+        visible: true,
+        type: 'error',
+        title: 'Error de procesamiento',
+        message: error || 'Ocurrió un error al procesar el reconocimiento facial.',
+      });
+    }
   };
 
   const handleReset = () => { setCapturedUri(null); reset(); };
@@ -103,6 +155,13 @@ export default function RecognizeScreen() {
             <Text style={s.primaryTxt}>Nueva captura</Text>
           </TouchableOpacity>
         </View>
+        <CustomAlert
+          visible={alertConfig.visible}
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        />
       </SafeAreaView>
     );
   }
@@ -127,6 +186,13 @@ export default function RecognizeScreen() {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryTxt}>Reconocer</Text>}
           </TouchableOpacity>
         </View>
+        <CustomAlert
+          visible={alertConfig.visible}
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        />
       </SafeAreaView>
     );
   }
@@ -167,6 +233,13 @@ export default function RecognizeScreen() {
         </TouchableOpacity>
         <View style={{ width: 44 }} />
       </View>
+      <CustomAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

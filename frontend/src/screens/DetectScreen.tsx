@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ActivityIndicator, Alert, Image, ScrollView, FlatList,
+  View, Text, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Image, ScrollView, FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useDetection } from '../hooks/useDetection';
+import { CustomAlert } from '../components/CustomAlert';
 
 export default function DetectScreen() {
   const router = useRouter();
@@ -16,23 +19,58 @@ export default function DetectScreen() {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const cameraRef = useRef<any>(null);
   const { detect, loading, result, error, reset } = useDetection();
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'error' as 'error' | 'warning' | 'success',
+    title: '',
+    message: '',
+  });
+
+  const compressImage = async (uri: string): Promise<string> => {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (e) {
+      console.warn("Error comprimiendo imagen:", e);
+      return uri;
+    }
+  };
 
   const takePicture = async () => {
-    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
-    if (photo) { setCapturedUri(photo.uri); reset(); }
+    const photo = await cameraRef.current?.takePictureAsync({ quality: 0.5 });
+    if (photo) {
+      const compressedUri = await compressImage(photo.uri);
+      setCapturedUri(compressedUri);
+      reset();
+    }
   };
 
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5,
     });
-    if (!res.canceled) { setCapturedUri(res.assets[0].uri); reset(); }
+    if (!res.canceled) {
+      const compressedUri = await compressImage(res.assets[0].uri);
+      setCapturedUri(compressedUri);
+      reset();
+    }
   };
 
   const analyze = async () => {
     if (!capturedUri) return;
     try { await detect(capturedUri); }
-    catch { Alert.alert('Error', error || 'No se pudo analizar'); }
+    catch (err: any) {
+      setAlertConfig({
+        visible: true,
+        type: 'error',
+        title: 'Error de análisis',
+        message: error || 'No se pudo analizar la imagen. Inténtalo de nuevo.',
+      });
+    }
   };
 
   const handleReset = () => { setCapturedUri(null); reset(); };
@@ -80,6 +118,13 @@ export default function DetectScreen() {
             <Text style={s.primaryTxt}>Nueva foto</Text>
           </TouchableOpacity>
         </View>
+        <CustomAlert
+          visible={alertConfig.visible}
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        />
       </SafeAreaView>
     );
   }
@@ -104,6 +149,13 @@ export default function DetectScreen() {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryTxt}>Detectar</Text>}
           </TouchableOpacity>
         </View>
+        <CustomAlert
+          visible={alertConfig.visible}
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+        />
       </SafeAreaView>
     );
   }
@@ -112,7 +164,7 @@ export default function DetectScreen() {
   if (!permission?.granted) {
     return (
       <SafeAreaView style={s.center}>
-        <Ionicons name="camera-off-outline" size={56} color="#9CA3AF" />
+        <Ionicons name="camera-outline" size={56} color="#9CA3AF" />
         <Text style={s.permText}>Se necesita acceso a la camara</Text>
         <TouchableOpacity style={s.primaryBtn} onPress={requestPermission}>
           <Text style={s.primaryTxt}>Permitir</Text>
@@ -147,6 +199,13 @@ export default function DetectScreen() {
         </TouchableOpacity>
         <View style={{ width: 44 }} />
       </View>
+      <CustomAlert
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

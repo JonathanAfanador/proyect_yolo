@@ -67,13 +67,22 @@ class FaceService:
 
     def compute_similarity(self, emb1: list, emb2: list):
         """
-        Distancia euclidiana entre dos embeddings.
+        Distancia Coseno entre dos embeddings (ideal para cambios de luz/exteriores).
         Retorna (similarity 0-1, distance).
-        verified = True si distance <= SIMILARITY_THRESHOLD (default 0.40).
+        verified = True si distance <= SIMILARITY_THRESHOLD.
         """
         a, b = np.array(emb1, np.float32), np.array(emb2, np.float32)
-        distance = float(np.linalg.norm(a - b))
-        similarity = round(max(0.0, 1.0 - distance / 2.0), 4)
+        dot_product = np.dot(a, b)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        
+        if norm_a == 0 or norm_b == 0:
+            return 0.0, 1.0
+            
+        cosine_distance = 1.0 - (dot_product / (norm_a * norm_b))
+        distance = float(cosine_distance)
+        
+        similarity = round(max(0.0, 1.0 - distance), 4)
         return similarity, round(distance, 4)
 
     def match_against_db(self, query_emb: list, registered: list, bbox=None) -> list:

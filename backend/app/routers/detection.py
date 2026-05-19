@@ -14,19 +14,30 @@ ALLOWED = {"image/jpeg", "image/png", "image/webp"}
 @router.post("/", response_model=DetectionResult)
 async def detect_objects(
     file: UploadFile = File(...),
-    confidence: float = Form(default=0.5),
+    confidence: float = Form(default=0.25),
     max_results: int = Form(default=50),
     classes_filter: str = Form(default=None),
     user_id: str = Depends(get_current_user),
 ):
+    print(f"\n📥 [API] Petición /detect recibió imagen.")
     if file.content_type not in ALLOWED:
+        print("❌ [API] Formato de archivo no soportado.")
         raise HTTPException(400, "Formato no soportado. Usa JPG, PNG o WEBP.")
+    
     image_bytes = await file.read()
+    print(f"📸 [API] Imagen leída con éxito. Tamaño original/comprimido: {len(image_bytes)/1024:.2f} KB")
+    
     filters = json.loads(classes_filter) if classes_filter else None
+    print(f"🔍 [API] Iniciando inferencia de objetos con YOLOv8 (conf: {confidence})...")
     detections, annotated_bytes, elapsed = await yolo_service.detect_objects(
         image_bytes, confidence, max_results, filters
     )
+    print(f"✅ [API] Detección finalizada en {elapsed:.2f}ms. Objetos encontrados: {len(detections)}")
+    
+    print("☁️ [API] Subiendo par de imágenes (original + anotada) a Supabase Storage...")
     det_id, orig_url, ann_url = await upload_pair(image_bytes, annotated_bytes, "detections")
+    print(f"✅ [API] Imágenes subidas correctamente. ID: {det_id}")
+    
     row = {
         "id": det_id, "user_id": user_id,
         "image_url": orig_url, "annotated_url": ann_url,
@@ -37,7 +48,11 @@ async def detect_objects(
         "confidence_threshold": confidence,
         "type": "object",
     }
+    
+    print("💾 [API] Guardando registro de detección en base de datos Supabase...")
     get_db().table("detections").insert(row).execute()
+    print("🎉 [API] Detección registrada con éxito!")
+    
     return DetectionResult(
         detection_id=det_id, image_url=orig_url, annotated_url=ann_url,
         detections=detections, total_objects=len(detections),

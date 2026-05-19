@@ -7,7 +7,7 @@ export function useDetection() {
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const detect = async (imageUri: string, confidence = 0.5) => {
+  const detect = async (imageUri: string, confidence = 0.25) => {
     setLoading(true); setError(null);
     try {
       const data = await detectionApi.detect(imageUri, confidence);
