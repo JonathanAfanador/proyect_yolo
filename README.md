@@ -1,4 +1,4 @@
-# CNN Unified App 
+# Detector de objetos y personas App 
 
 Aplicación móvil unificada con **detección de objetos en tiempo real (YOLOv8)** y **reconocimiento facial de alta precisión (YOLOv8 + DeepFace)**. Dispone de un sistema centralizado, diseño premium responsivo y alertas personalizadas integradas.
 
