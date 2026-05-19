@@ -1,0 +1,75 @@
+# ============================================================
+# CNN Unified App — Docker Compose
+# ============================================================
+# Uso:
+#   cp .env.docker .env          # Configurar variables
+#   docker-compose up --build    # Construir e iniciar
+#   docker-compose up -d         # Iniciar en background
+#   docker-compose logs -f api   # Ver logs
+#   docker-compose down          # Detener
+# ============================================================
+
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Modelos a descargar durante el build
+        # Cambiar aqui si quieres un modelo mas preciso:
+        YOLO_OBJECT_MODEL: yolov8n.pt     # opciones: yolov8n/s/m/l/x.pt
+        YOLO_FACE_MODEL: yolov8n-face.pt  # deteccion de rostros
+        FACE_MODEL: VGG-Face              # opciones: VGG-Face | Facenet512 | ArcFace
+
+    container_name: cnn-unified-api
+
+    ports:
+      - "8000:8000"
+
+    # Lee las variables de entorno desde .env
+    # IMPORTANTE: copiar .env.docker a .env antes de ejecutar
+    env_file:
+      - .env
+
+    # Variables de entorno adicionales que sobreescriben .env
+    # Las rutas de modelos apuntan DENTRO del contenedor
+    environment:
+      - YOLO_OBJECT_MODEL=yolov8n.pt
+      - YOLO_FACE_MODEL=yolov8n-face.pt
+
+    volumes:
+      # Montar modelos pre-descargados (evita re-descargar al recrear el contenedor)
+      - ./models:/app/models
+
+      # Persistir modelos DeepFace entre builds
+      - deepface_weights:/root/.deepface/weights
+
+      # Hot-reload del codigo en desarrollo (comentar en produccion)
+      - ./app:/app/app
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s   # tiempo extra para cargar modelos al iniciar
+
+    # ── GPU NVIDIA (descomenta si tienes GPU) ─────────────
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+# ── Volumenes nombrados ───────────────────────────────────
+volumes:
+  deepface_weights:
+    driver: local
+    # Los pesos de DeepFace (~500MB) se guardan aqui y
+    # se reusan entre recreaciones del contenedor

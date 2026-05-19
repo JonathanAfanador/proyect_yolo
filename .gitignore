@@ -1,0 +1,47 @@
+# =========================================================================
+# CNN Unified Project — Unified Gitignore
+# =========================================================================
+
+# ── Env files (Contain secrets like API Keys) ────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.docker
+
+# ── Backend Python ───────────────────────────────────────────────────────
+backend/venv/
+backend/venv_yolo/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+backend/pip-log.txt
+backend/pip-delete-this-directory.txt
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# ── Model Weights (Large files that should be downloaded via script) ─────
+backend/models/*.pt
+backend/models/*.onnx
+backend/models/*.engine
+
+# ── Frontend Node & React Native ─────────────────────────────────────────
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ── System Files ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

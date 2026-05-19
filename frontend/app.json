@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "CNN Unified",
+    "slug": "cnn-unified-app",
+    "version": "1.0.0",
+    "scheme": "cnn-unified",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#1A1A2E"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Necesitamos acceso a la camara para detectar objetos y reconocer rostros."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Necesitamos acceso a tus fotos para analizarlas."
+        }
+      ],
+      "expo-font"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1A1A2E"
+      },
+      "package": "com.cnnunified.app"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cnnunified.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
